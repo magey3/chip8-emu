@@ -121,6 +121,47 @@ pub fn execute(state: &mut State, opcode: OpCode) {
 		OpCode::DrawSprite { vx, vy, height } => {
 			todo!();
 		}
+		OpCode::SkipNextIfKeyPressed(key) => {
+			todo!();
+		}
+		OpCode::SkipNextIfNotPressed(key) => {
+			todo!();
+		}
+		OpCode::GetDelayTimerValue(vx) => {
+			state.reg[vx as usize] = state.delay_timer;
+		}
+		OpCode::GetKey(vx) => {
+			todo!();
+		}
+		OpCode::SetDelayTimerValue(vx) => {
+			state.delay_timer = state.reg[vx as usize];
+		}
+		OpCode::SetSoundTimerValue(vx) => {
+			state.sound_timer = state.reg[vx as usize];
+		}
+		OpCode::AddRegToIndexReg(vx) => {
+			state.index_reg += state.reg[vx as usize] as u16;
+		}
+		OpCode::SetIndexToSpriteLocation(vx) => {
+			todo!();
+		}
+		OpCode::FX33(vx) => {
+			todo!("I have no clue what this does");
+		}
+		OpCode::StoreV0ToVXToAddrAtIndex(vx) => {
+			let mut index = state.index_reg as usize;
+			for i in 0..vx + 1 {
+				state.memory[index] = state.reg[i as usize];
+				index += 1;
+			}
+		}
+		OpCode::LoadV0ToVXFromAddrAtIndex(vx) => {
+			let mut index = state.index_reg as usize;
+			for i in 0..vx + 1 {
+				state.reg[i as usize] = state.memory[index];
+				index += 1;
+			}
+		}
 		_ => panic!("Unsupported opcode at {:#x}", state.program_counter),
 	}
 }

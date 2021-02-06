@@ -155,7 +155,67 @@ mod test {
 		cpu.reg[0] = 0;
 		let x = decode(&cpu, 0xC00f);
 		execute(&mut cpu, x);
+		//Can't really test this much more than testing if it's properly ANDed
 		assert_eq!(cpu.reg[0], cpu.reg[0] & 0x0f);
+	}
+
+	#[test]
+	fn get_delay_timer() {
+		let mut cpu = State::new();
+		cpu.delay_timer = 100;
+		cpu.reg[0] = 0;
+		let x = decode(&cpu, 0xF007);
+		execute(&mut cpu, x);
+		assert_eq!(cpu.reg[0], cpu.delay_timer);
+	}
+
+	#[test]
+	fn set_timers() {
+		let mut cpu = State::new();
+		cpu.delay_timer = 0;
+		cpu.reg[0] = 100;
+		let x = decode(&cpu, 0xF015);
+		execute(&mut cpu, x);
+		assert_eq!(cpu.reg[0], cpu.delay_timer);
+
+		let mut cpu = State::new();
+		cpu.sound_timer = 0;
+		cpu.reg[0] = 100;
+		let x = decode(&cpu, 0xF018);
+		execute(&mut cpu, x);
+		assert_eq!(cpu.reg[0], cpu.sound_timer);
+	}
+
+	#[test]
+	fn add_to_index_reg() {
+		let mut cpu = State::new();
+		cpu.index_reg = 0;
+		cpu.reg[0] = 5;
+		let x = decode(&cpu, 0xF01E);
+		execute(&mut cpu, x);
+		assert_eq!(cpu.index_reg, cpu.reg[0] as u16);
+	}
+
+	#[test]
+	fn load_reg_to_and_from_memory() {
+		let mut cpu = State::new();
+		cpu.index_reg = 0x200;
+		for i in 0x200..0x210 {
+			cpu.memory[i] = 0xfe;
+		}
+		let x = decode(&cpu, 0xff65);
+		execute(&mut cpu, x);
+		for i in 0..cpu.reg.len() {
+			assert_eq!(cpu.reg[i], 0xfe);
+		}
+		assert_eq!(cpu.index_reg, 0x200);
+		cpu.index_reg = 0x300;
+		let x = decode(&cpu, 0xff55);
+		execute(&mut cpu, x);
+		for i in 0x300..0x310 {
+			assert_eq!(cpu.reg[0], cpu.memory[i as usize]);
+		}
+		assert_eq!(cpu.index_reg, 0x300);
 	}
 }
 
