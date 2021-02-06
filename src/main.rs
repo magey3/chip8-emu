@@ -176,7 +176,7 @@ impl State {
 			memory: [0; 4096],
 			reg: [0; 16],
 			screen: [false; 64 * 32],
-			stack: Vec::new(),
+			stack: Vec::with_capacity(16),
 			program_counter: 0x200,
 			index_reg: 0,
 			delay_timer: 0,
