@@ -2,14 +2,15 @@ use crate::*;
 
 pub fn decode(state: &State, opcode: u16) -> OpCode {
 	let code = (
-		(opcode & 0xf000) >> 12,
-		(opcode & 0x0f00) >> 8,
 		(opcode & 0x00f0) >> 4,
 		opcode & 0x000f,
+		(opcode & 0xf000) >> 12,
+		(opcode & 0x0f00) >> 8,
 	);
 	match code {
 		(0, 0, 0xE, 0) => OpCode::ClearScreen,
 		(0, 0, 0xE, 0xE) => OpCode::SubroutineRet,
+		(0, _, _, _) => OpCode::CallMCodeSubroutine(code.3 | (code.2 << 4) | (code.1 << 8)),
 		(1, _, _, _) => OpCode::Goto(code.3 | (code.2 << 4) | (code.1 << 8)),
 		(2, _, _, _) => OpCode::Call(code.3 | (code.2 << 4) | (code.1 << 8)),
 		(3, _, _, _) => OpCode::SkipNextIfEqRegN {
@@ -84,10 +85,13 @@ pub fn decode(state: &State, opcode: u16) -> OpCode {
 		(0xF, _, 1, 5) => OpCode::SetDelayTimerValue(code.1 as u8),
 		(0xF, _, 1, 8) => OpCode::SetSoundTimerValue(code.1 as u8),
 		(0xF, _, 1, 0xE) => OpCode::AddRegToIndexReg(code.1 as u8),
-		(0xF, _, 1, 9) => OpCode::SetIndexToSpriteLocation(code.1 as u8),
-		(0xF, _, 3, 3) => OpCode::FX33(code.1 as u8),
+		(0xF, _, 2, 9) => OpCode::SetIndexToSpriteLocation(code.1 as u8),
+		(0xF, _, 3, 3) => OpCode::BinaryCodedDecimalConversion(code.1 as u8),
 		(0xF, _, 5, 5) => OpCode::StoreV0ToVXToAddrAtIndex(code.1 as u8),
 		(0xF, _, 6, 5) => OpCode::LoadV0ToVXFromAddrAtIndex(code.1 as u8),
-		(_, _, _, _) => panic!("Unsupported opcode at {:#x}", state.program_counter),
+		(_, _, _, _) => panic!(
+			"Unsupported opcode({:#x}) at {:#x}",
+			opcode, state.program_counter
+		),
 	}
 }

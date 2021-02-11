@@ -1,6 +1,11 @@
 mod decode;
 mod execute;
+mod graphics;
+mod load;
 mod opcode;
+mod util;
+
+use graphics::Display;
 
 use crate::decode::*;
 use crate::execute::*;
@@ -41,14 +46,14 @@ mod test {
 		cpu.reg[0] = 0xff;
 		assert_eq!(cpu.program_counter, 0x200);
 		execute(&mut cpu, x);
-		assert_eq!(cpu.program_counter, 0x200 + 1);
+		assert_eq!(cpu.program_counter, 0x200 + 2);
 		let x = decode(&cpu, 0x4000);
 		execute(&mut cpu, x);
-		assert_eq!(cpu.program_counter, 0x200 + 2);
+		assert_eq!(cpu.program_counter, 0x200 + 4);
 		cpu.reg[1] = 0xff;
 		let x = decode(&cpu, 0x5010);
 		execute(&mut cpu, x);
-		assert_eq!(cpu.program_counter, 0x200 + 3);
+		assert_eq!(cpu.program_counter, 0x200 + 6);
 	}
 
 	#[test]
@@ -217,14 +222,37 @@ mod test {
 		}
 		assert_eq!(cpu.index_reg, 0x300);
 	}
+
+	#[test]
+	fn clear_screen() {
+		let mut cpu = State::new();
+		cpu.screen = [true; 64 * 32];
+		let x = decode(&cpu, 0x00e0);
+		execute(&mut cpu, x);
+		assert_eq!(cpu.screen, [false; 64 * 32]);
+	}
+
+	#[test]
+	fn fx33() {
+		let mut cpu = State::new();
+		cpu.reg[0] = 253;
+		cpu.index_reg = 0x200;
+		let x = decode(&cpu, 0xf033);
+		execute(&mut cpu, x);
+		assert_eq!(cpu.memory[cpu.index_reg as usize], 2);
+		assert_eq!(cpu.memory[cpu.index_reg as usize + 1], 5);
+		assert_eq!(cpu.memory[cpu.index_reg as usize + 2], 3);
+	}
 }
 
 pub struct State {
+	pub sdl_context: sdl2::Sdl,
 	pub memory: [u8; 4096],
 	pub reg: [u8; 16],
 	pub index_reg: u16,
 	pub program_counter: u16,
 	pub screen: [bool; 64 * 32],
+	pub display: graphics::Display,
 	pub delay_timer: u8,
 	pub sound_timer: u8,
 	pub stack: Vec<u16>,
@@ -232,10 +260,14 @@ pub struct State {
 }
 impl State {
 	fn new() -> Self {
+		let sdl_context = sdl2::init().unwrap();
+		let display = graphics::Display::new(&sdl_context);
 		Self {
+			sdl_context,
 			memory: [0; 4096],
 			reg: [0; 16],
 			screen: [false; 64 * 32],
+			display,
 			stack: Vec::with_capacity(16),
 			program_counter: 0x200,
 			index_reg: 0,
@@ -244,10 +276,34 @@ impl State {
 			stack_poiner: 0,
 		}
 	}
+	fn update(&mut self) {
+		let fetched_inst = fetch(self);
+		let inst = decode(self, fetched_inst);
+		//println!("{:?}", inst);
+		execute(self, inst);
+	}
 }
 
 fn fetch(state: &mut State) -> u16 {
-	0
+	let instruction = state.memory[state.program_counter as usize] as u16
+		| ((state.memory[state.program_counter as usize + 1] as u16) << 8);
+	state.program_counter += 2;
+	instruction
 }
 
-fn main() {}
+fn main() {
+	let mut cpu = State::new();
+
+	load::load_program(&mut cpu, "IBM Logo.ch8");
+	'main: loop {
+		cpu.update();
+		let e = cpu.display.update(&cpu.sdl_context, &cpu.screen);
+		for i in e {
+			match i {
+				graphics::DisplayEvent::Quit => break 'main,
+				_ => {}
+			}
+		}
+	}
+	//println!("{:?}", cpu);
+}

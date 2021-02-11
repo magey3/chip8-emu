@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum OpCode {
 	CallMCodeSubroutine(u16),
 	ClearScreen,
@@ -82,7 +83,7 @@ pub enum OpCode {
 	SetSoundTimerValue(u8),
 	AddRegToIndexReg(u8),
 	SetIndexToSpriteLocation(u8),
-	FX33(u8),
+	BinaryCodedDecimalConversion(u8),
 	StoreV0ToVXToAddrAtIndex(u8),
 	LoadV0ToVXFromAddrAtIndex(u8),
 }

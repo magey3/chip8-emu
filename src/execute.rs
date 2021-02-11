@@ -1,12 +1,16 @@
 use crate::opcode::*;
 use crate::*;
 use rand::Rng;
+use util::get_bit;
 
 pub fn execute(state: &mut State, opcode: OpCode) {
 	match opcode {
+		OpCode::CallMCodeSubroutine(n) => {
+			eprintln!("Machine code subroutines are not supported");
+		}
 		//Clear screen
 		OpCode::ClearScreen => {
-			todo!("clear screen");
+			state.screen = [false; 64 * 32];
 		}
 		//Subroutine return
 		OpCode::SubroutineRet => {
@@ -28,19 +32,19 @@ pub fn execute(state: &mut State, opcode: OpCode) {
 		//Skip instruction if vX == n
 		OpCode::SkipNextIfEqRegN { vx, n } => {
 			if state.reg[vx as usize] == n {
-				state.program_counter += 1;
+				state.program_counter += 2;
 			}
 		}
 		//Skip instruction if vX != n
 		OpCode::SkipNextIfNotEqRegN { vx, n } => {
 			if state.reg[vx as usize] != n {
-				state.program_counter += 1;
+				state.program_counter += 2;
 			}
 		}
 		//Skip instruction if vX == vY
 		OpCode::SkipNextIfEqRegReg { vx, vy } => {
 			if state.reg[vx as usize] == state.reg[vy as usize] {
-				state.program_counter += 1;
+				state.program_counter += 2;
 			}
 		}
 		//Set vX to N
@@ -102,7 +106,7 @@ pub fn execute(state: &mut State, opcode: OpCode) {
 		//Skip next instruction if vX != vY
 		OpCode::SkipNextIfNotEqRegReg { vx, vy } => {
 			if state.reg[vx as usize] != state.reg[vy as usize] {
-				state.program_counter += 1;
+				state.program_counter += 2;
 			}
 		}
 		//Sets index_reg to N
@@ -119,19 +123,52 @@ pub fn execute(state: &mut State, opcode: OpCode) {
 		}
 		//Display sprite at vX, vY with width of 8px and height of height+1px
 		OpCode::DrawSprite { vx, vy, height } => {
-			todo!();
+			let sprite = &state.memory
+				[state.index_reg as usize..(height as usize + state.index_reg as usize)];
+			let x = (state.reg[vx as usize] % 64) as u16;
+			let y = (state.reg[vy as usize] % 32) as u16;
+			state.reg[15] = 0;
+			for (i, item) in sprite.iter().enumerate() {
+				let bits = [
+					get_bit(item.to_owned(), 7),
+					get_bit(item.to_owned(), 6),
+					get_bit(item.to_owned(), 5),
+					get_bit(item.to_owned(), 4),
+					get_bit(item.to_owned(), 3),
+					get_bit(item.to_owned(), 2),
+					get_bit(item.to_owned(), 1),
+					get_bit(item.to_owned(), 0),
+				];
+
+				if y + i as u16 > 32 {
+					break;
+				}
+
+				for (j, item) in bits.iter().enumerate() {
+					if x + j as u16 > 64 {
+						break;
+					}
+					let index: usize = ((x + j as u16) + (y + i as u16) * 64) as usize;
+					if item.to_owned() {
+						state.screen[index] = !state.screen[index];
+					}
+					if state.screen[index] == false {
+						state.reg[15] = 1;
+					}
+				}
+			}
 		}
 		OpCode::SkipNextIfKeyPressed(key) => {
-			todo!();
+			//TODO
 		}
 		OpCode::SkipNextIfNotPressed(key) => {
-			todo!();
+			//TODO
 		}
 		OpCode::GetDelayTimerValue(vx) => {
 			state.reg[vx as usize] = state.delay_timer;
 		}
 		OpCode::GetKey(vx) => {
-			todo!();
+			//TODO
 		}
 		OpCode::SetDelayTimerValue(vx) => {
 			state.delay_timer = state.reg[vx as usize];
@@ -143,10 +180,12 @@ pub fn execute(state: &mut State, opcode: OpCode) {
 			state.index_reg += state.reg[vx as usize] as u16;
 		}
 		OpCode::SetIndexToSpriteLocation(vx) => {
-			todo!();
+			//TODO
 		}
-		OpCode::FX33(vx) => {
-			todo!("I have no clue what this does");
+		OpCode::BinaryCodedDecimalConversion(vx) => {
+			state.memory[state.index_reg as usize] = state.reg[vx as usize] / 100;
+			state.memory[state.index_reg as usize + 1] = (state.reg[vx as usize] % 100) / 10;
+			state.memory[state.index_reg as usize + 2] = state.reg[vx as usize] % 10;
 		}
 		OpCode::StoreV0ToVXToAddrAtIndex(vx) => {
 			let mut index = state.index_reg as usize;
